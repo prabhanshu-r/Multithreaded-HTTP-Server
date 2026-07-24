@@ -1,0 +1,10 @@
+build/
+
+logs/
+
+.vscode/
+
+.swp
+
+Thumbs.db
+.DS_Store
