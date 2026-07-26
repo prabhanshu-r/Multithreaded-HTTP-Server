@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
 
 class Server {
@@ -11,7 +11,5 @@ public:
 private:
     int serverSocket;
 };
-
-Server::Server() : serverSocket(-1) {}
 
 #endif
