@@ -1,6 +1,5 @@
 #include "server/Server.hpp"
 
-#include <arpa/inet.h>
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -70,6 +69,26 @@ void Server::start() {
 
     std::cout << "Client Connected!\n";
     std::cout << "Client Socket FD : " << clientSocket << '\n';
+
+    char buffer[4096] = {0};
+
+    ssize_t bytesReceived = recv(
+        clientSocket,
+        buffer,
+        sizeof(buffer) -1,
+        0
+    );
+
+    if (bytesReceived == -1) {
+        std:: cerr << "Receive failed.\n";
+        close(clientSocket);
+        return;
+    }    
+
+    buffer[bytesReceived] = '\0';
+
+    std::cout << "\nHTTP REQUEST\n";
+    std::cout << buffer<<'\n';
 
     close(clientSocket);
 }
