@@ -70,6 +70,8 @@ void Server::start() {
     std::cout << "Client Connected!\n";
     std::cout << "Client Socket FD : " << clientSocket << '\n';
 
+    //
+
     char buffer[4096] = {0};
 
     ssize_t bytesReceived = recv(

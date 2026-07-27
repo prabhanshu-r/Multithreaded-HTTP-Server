@@ -1,0 +1,14 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/MultithreadedHTTPServer.dir/link.d"
+  "CMakeFiles/MultithreadedHTTPServer.dir/src/Server.cpp.o"
+  "CMakeFiles/MultithreadedHTTPServer.dir/src/Server.cpp.o.d"
+  "CMakeFiles/MultithreadedHTTPServer.dir/src/main.cpp.o"
+  "CMakeFiles/MultithreadedHTTPServer.dir/src/main.cpp.o.d"
+  "MultithreadedHTTPServer"
+  "MultithreadedHTTPServer.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/MultithreadedHTTPServer.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
