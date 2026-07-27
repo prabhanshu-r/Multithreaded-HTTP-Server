@@ -1,3 +1,0 @@
-/home/prabhanshu/projects/Multithreaded-HTTP-Server/build/CMakeFiles/MultithreadedHTTPServer.dir
-/home/prabhanshu/projects/Multithreaded-HTTP-Server/build/CMakeFiles/edit_cache.dir
-/home/prabhanshu/projects/Multithreaded-HTTP-Server/build/CMakeFiles/rebuild_cache.dir
