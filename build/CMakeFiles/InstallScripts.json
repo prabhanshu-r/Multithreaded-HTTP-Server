@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/prabhanshu/projects/Multithreaded-HTTP-Server/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
