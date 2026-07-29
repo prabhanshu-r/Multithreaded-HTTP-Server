@@ -1,4 +1,6 @@
 #include "server/Server.hpp"
+#include "server/HttpParser.hpp"
+#include "server/HttpRequest.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -91,8 +93,16 @@ void Server::start() {
     buffer[bytesReceived] = '\0';
 
     std::cout << "\nHTTP REQUEST\n";
-    std::cout << buffer<<'\n';
+    
+    HttpParser parser;
 
+    HttpRequest request = parser.parse(buffer);
+
+    std::cout << "Parsed Request\n";
+
+    std::cout << "Method : " << request.method<< "\n";
+    std::cout << "path : " << request.path<< "\n";
+    std::cout << "version : " << request.version<< "\n";
     //Send
 
     std::string body = "<html><h1>Hello from C++ server!</h1></html>";
@@ -104,7 +114,7 @@ void Server::start() {
         std::to_string(body.size()) +
         "\r\n\r\n" +
         body;
-    
+
     send(
         clientSocket,
         response.c_str(),

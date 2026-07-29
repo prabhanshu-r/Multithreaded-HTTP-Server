@@ -11,4 +11,5 @@ add_executable(
     MultithreadedHTTPServer
     src/main.cpp
     src/Server.cpp
+    src/HttpParser.cpp
 )
