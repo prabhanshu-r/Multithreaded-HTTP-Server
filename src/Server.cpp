@@ -71,7 +71,7 @@ void Server::start() {
     std::cout << "Client Connected!\n";
     std::cout << "Client Socket FD : " << clientSocket << '\n';
 
-    //
+    //Receive
 
     char buffer[4096] = {0};
 
@@ -93,22 +93,24 @@ void Server::start() {
     std::cout << "\nHTTP REQUEST\n";
     std::cout << buffer<<'\n';
 
+    //Send
+
     std::string body = "<html><h1>Hello from C++ server!</h1></html>";
 
-std::string response =
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/html\r\n"
-    "Content-Length: " +
-    std::to_string(body.size()) +
-    "\r\n\r\n" +
-    body;
-
-send(
-    clientSocket,
-    response.c_str(),
-    response.size(),
-    0
-);
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Length: " +
+        std::to_string(body.size()) +
+        "\r\n\r\n" +
+        body;
+    
+    send(
+        clientSocket,
+        response.c_str(),
+        response.size(),
+        0
+    );
 
     close(clientSocket);
 }
