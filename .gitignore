@@ -8,3 +8,13 @@ logs/
 
 Thumbs.db
 .DS_Store
+
+CMakeFiles/
+
+Makefile
+
+CMakeCache.txt
+
+MultithreadedHTTPServer
+
+cmake_install.cmake
