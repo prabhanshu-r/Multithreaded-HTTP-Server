@@ -1,6 +1,8 @@
 #include "server/Server.hpp"
 #include "server/HttpParser.hpp"
 #include "server/HttpRequest.hpp"
+#include "server/Router.hpp"
+#include "server/HttpResponse.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -98,27 +100,33 @@ void Server::start() {
 
     HttpRequest request = parser.parse(buffer);
 
-    std::cout << "Parsed Request\n";
+    // std::cout << "Parsed Request\n";
 
-    std::cout << "Method : " << request.method<< "\n";
-    std::cout << "path : " << request.path<< "\n";
-    std::cout << "version : " << request.version<< "\n";
-    //Send
+    // std::cout << "Method : " << request.method<< "\n";
+    // std::cout << "path : " << request.path<< "\n";
+    // std::cout << "version : " << request.version<< "\n";
+    // //Send
 
-    std::string body = "<html><h1>Hello from C++ server!</h1></html>";
+    // std::string body = "<html><h1>Hello from C++ server!</h1></html>";
 
-    std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/html\r\n"
-        "Content-Length: " +
-        std::to_string(body.size()) +
-        "\r\n\r\n" +
-        body;
+    // std::string response =
+    //     "HTTP/1.1 200 OK\r\n"
+    //     "Content-Type: text/html\r\n"
+    //     "Content-Length: " +
+    //     std::to_string(body.size()) +
+    //     "\r\n\r\n" +
+    //     body;
+
+    Router router;
+
+    HttpResponse response = router.route(request);
+
+    std::string httpResponse = response.toString();
 
     send(
         clientSocket,
-        response.c_str(),
-        response.size(),
+        httpResponse.c_str(),
+        httpResponse.size(),
         0
     );
 

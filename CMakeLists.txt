@@ -12,4 +12,6 @@ add_executable(
     src/main.cpp
     src/Server.cpp
     src/HttpParser.cpp
+    src/Router.cpp
+    src/HttpResponse.cpp
 )
