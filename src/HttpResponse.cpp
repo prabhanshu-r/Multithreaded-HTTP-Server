@@ -1,5 +1,14 @@
 #include "server/HttpResponse.hpp"
 
+// HttpResponse HttpResponse;
+
+// HttpResponse.body = body;
+
+// if(filePath.empty()) {
+//     HttpResponse.statusCode = 404;
+//     HttpResponse.statusMessage = "Not Found";
+// }
+
 std::string HttpResponse::toString() const {
 
     return 

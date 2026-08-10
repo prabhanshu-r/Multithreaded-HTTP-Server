@@ -3,6 +3,7 @@
 #include "server/HttpRequest.hpp"
 #include "server/Router.hpp"
 #include "server/HttpResponse.hpp"
+#include "server/StaticFileHandler.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -119,9 +120,43 @@ void Server::start() {
 
     Router router;
 
-    HttpResponse response = router.route(request);
+    StaticFileHandler fileHandler;
 
-    std::string httpResponse = response.toString();
+    // HttpResponse response = router.route(request);
+
+    // std::string httpResponse = response.toString();
+
+    // send(
+    //     clientSocket,
+    //     httpResponse.c_str(),
+    //     httpResponse.size(),
+    //     0
+    // );
+
+    std::string filePath = router.getFilePath(request);
+
+    std::string body;
+
+    if(filePath.empty()) {
+        body = "<html><h1>404 Not Found</h1></html>"
+    } else {
+        body = fileHandler.readFile(filePath);
+
+        if(body.empty()) {
+            body = "<html><h1>404 File Missing</h1></html>";
+        }
+    }
+
+    HttpResponse response;
+
+    response.boyd = body;
+
+    if(filePath.empty()) {
+        response.statusCode = 404;
+        response.statusMessage = "Not Found";
+    }
+
+    std::string HttpResponse = response.toString();
 
     send(
         clientSocket,

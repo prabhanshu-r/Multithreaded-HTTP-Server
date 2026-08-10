@@ -14,4 +14,5 @@ add_executable(
     src/HttpParser.cpp
     src/Router.cpp
     src/HttpResponse.cpp
+    src/StaticFileHandler.cpp
 )
