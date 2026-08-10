@@ -138,30 +138,30 @@ void Server::start() {
     std::string body;
 
     if(filePath.empty()) {
-        body = "<html><h1>404 Not Found</h1></html>"
+        body = "<html><h1>404 Not Found</h1></html>";
     } else {
         body = fileHandler.readFile(filePath);
 
-        if(body.empty()) {
-            body = "<html><h1>404 File Missing</h1></html>";
-        }
+        // if(body.empty()) {
+        //     body = "<html><h1>404 File Missing</h1></html>";
+        // }
     }
 
     HttpResponse response;
 
-    response.boyd = body;
+    response.body = body;
 
     if(filePath.empty()) {
         response.statusCode = 404;
-        response.statusMessage = "Not Found";
+        response.statusMessge = "Not Found";
     }
 
     std::string HttpResponse = response.toString();
 
     send(
         clientSocket,
-        httpResponse.c_str(),
-        httpResponse.size(),
+        HttpResponse.c_str(),
+        HttpResponse.size(),
         0
     );
 

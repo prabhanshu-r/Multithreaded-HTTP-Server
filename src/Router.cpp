@@ -1,9 +1,9 @@
 #include "server/Router.hpp"
 #include "server/StaticFileHandler.hpp"
 
-HttpResponse Router::route(const HttpRequest& request) {
+std::string Router::getFilePath(const HttpRequest& request) {
     // HttpResponse response;
-    StaticFileHandler fileHandler;
+    // StaticFileHandler fileHandler;
 
 
     // if(request.path == "/") {
