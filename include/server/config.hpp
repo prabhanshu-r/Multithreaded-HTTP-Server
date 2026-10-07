@@ -1,42 +1,24 @@
-#pragma once
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
 
+#include <cstddef>
 #include <string>
-#include <cstringf>
 
-class Config {
-public:
-    config();
+// Server settings. The defaults are used for anything the config file omits.
+struct Config {
+    std::string host = "0.0.0.0";
+    int port = 8080;
+    std::size_t workers = 4;
+    std::size_t queueLimit = 128;
+    std::string documentRoot = "public";
+    std::size_t maxRequestSize = 8192;
+    int readTimeoutSeconds = 5;
 
+    // Reads "key = value" lines. Returns false if the file cannot be opened.
     bool load(const std::string& filename);
 
-    const std::string& getHost() const;
-    int getPort() const;
-
-    std::size_t getWorkers() const;
-
-    const std::string& getDocumentRoot() const;
-
-    bool isKeepAliveEnable() const;
-    int getKeepAliveTimeout() const;
-
-    std::size_t getMaxRequenstSize() const;
-
-private:
-    std::string host_;
-    int port_;
-
-    std::size_t workes;
-
-    std::string documentRoot_;
-
-    bool keepAlive;
-    int keepAliveTimeout_;
-
-    std::sze_t maxRequestSize_;
-
-    void setValue(const std::string& key,
-                    const std::string& valuse);
-    
-    static std::string trim(cosnt std::string& str);
-    static bool pareseBool(const std::string& value);
+    // Lets the PORT environment variable override the port (used by cloud hosts).
+    void applyEnvironment();
 };
+
+#endif
