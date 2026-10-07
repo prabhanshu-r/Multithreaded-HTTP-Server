@@ -1,169 +1,131 @@
 #include "server/Server.hpp"
-#include "server/HttpParser.hpp"
+
+#include <poll.h>
+#include <pthread.h>
+#include <csignal>
+
+#include <cerrno>
+#include <chrono>
+#include <exception>
+#include <memory>
+
 #include "server/HttpRequest.hpp"
-#include "server/Router.hpp"
 #include "server/HttpResponse.hpp"
-#include "server/StaticFileHandler.hpp"
+#include "server/Logger.hpp"
+#include "server/ThreadPool.hpp"
 
-#include <iostream>
-#include <cstring>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+std::atomic<bool> Server::stopRequested_{false};
+static_assert(std::atomic<bool>::is_always_lock_free, "needed to be signal-safe");
 
+Server::Server(const Config& config)
+    : config_(config), files_(config.documentRoot), router_(files_) {}
 
-Server::Server() : serverSocket(-1){}
+void Server::requestStop() { stopRequested_.store(true); }
 
-Server::~Server(){
-    if(serverSocket >= 0) close(serverSocket);
+bool Server::start() {
+    std::string error;
+    Socket listener = Socket::listenOn(config_.host, config_.port, error);
+    if (!listener.valid()) {
+        Logger::error("cannot start: " + error);
+        return false;
+    }
+
+    Logger::info("listening on " + config_.host + ":" + std::to_string(config_.port) + " with " +
+                 std::to_string(config_.workers) + " workers, serving '" + config_.documentRoot + "'");
+
+    // Block Ctrl+C/SIGTERM while the workers start. Threads inherit the blocked
+    // mask, so these signals can only interrupt THIS thread's poll() and a stop
+    // request is noticed immediately instead of after the poll timeout.
+    sigset_t stopSignals, previousMask;
+    sigemptyset(&stopSignals);
+    sigaddset(&stopSignals, SIGINT);
+    sigaddset(&stopSignals, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &stopSignals, &previousMask);
+    ThreadPool pool(config_.workers, config_.queueLimit);
+    pthread_sigmask(SIG_SETMASK, &previousMask, nullptr);
+
+    // The main thread only accepts connections; the workers do all the real work.
+    while (!stopRequested_.load()) {
+        // Wake up every 500 ms so we notice a stop request even when idle.
+        pollfd waitFor{listener.fd(), POLLIN, 0};
+        int ready = ::poll(&waitFor, 1, 500);
+        if (ready < 0) {
+            if (errno == EINTR) continue;  // a signal arrived; re-check the stop flag
+            Logger::error("poll failed");
+            break;
+        }
+        if (ready == 0) continue;
+
+        std::string clientIp;
+        Socket client = listener.acceptClient(clientIp);
+        if (!client.valid()) continue;
+        client.setTimeouts(config_.readTimeoutSeconds);
+
+        // std::function needs a copyable callable, so share the move-only Socket.
+        auto shared = std::make_shared<Socket>(std::move(client));
+        bool queued = pool.submit([this, shared, clientIp] { handleClient(*shared, clientIp); });
+
+        if (!queued) {
+            Logger::warn("queue full, rejecting " + clientIp);
+            shared->rejectAndClose(HttpResponse::error(503).serialize());
+        }
+    }
+
+    Logger::info("shutting down, finishing in-flight requests...");
+    pool.shutdown();
+    Logger::info("stopped");
+    return true;
 }
 
-void Server::start() {
-    // create socket
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+int Server::readRequest(Socket& client, std::string& raw) const {
+    using Clock = std::chrono::steady_clock;
+    // SO_RCVTIMEO limits ONE recv(); this deadline limits the whole request, so a
+    // client dripping one byte every few seconds cannot hold a worker forever.
+    const auto deadline = Clock::now() + std::chrono::seconds(config_.readTimeoutSeconds);
 
-    if (serverSocket == -1) {
-        std::cerr << "Failed to create socket.\n";
-        return;
+    char buffer[2048];
+    while (raw.find("\r\n\r\n") == std::string::npos) {
+        if (raw.size() > config_.maxRequestSize) return 431;
+        if (Clock::now() > deadline) return 408;
+
+        ssize_t n = client.receive(buffer, sizeof(buffer));
+        if (n == 0) return -1;  // client closed the connection
+        if (n < 0) return (errno == EAGAIN || errno == EWOULDBLOCK) ? 408 : -1;
+        raw.append(buffer, static_cast<std::size_t>(n));
     }
+    if (raw.find("\r\n\r\n") > config_.maxRequestSize) return 431;
+    return 0;
+}
 
-    std::cout <<"Socket Created\n";
-
-    //configure address
-    sockaddr_in serverAddress{};
-
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-    //Bind
-    int bid  = bind(serverSocket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress));
-    if(bid == -1) {
-        std::cerr << "Bind failed.\n";
-        close(serverSocket);
-        serverSocket = -1;
-        return;
-    }
-
-    std::cout << "Bind Successful\n";
-
-    //Listen
-    if(listen(serverSocket, 5) == -1) {
-        std::cerr << "Listen failed.\n";
-        close(serverSocket);
-        serverSocket = -1;
-        return;
-    }
-
-    std::cout << "Listening on port 8080...\n";
-    std::cout << "Waiting for clint...\n";
-
-    //Accept
-    sockaddr_in clientAddress{};
-    socklen_t clientLenght = sizeof(clientAddress);
-
-    int clientSocket = accept(
-        serverSocket,
-        reinterpret_cast<sockaddr*>(&clientAddress),
-        &clientLenght
-    );
-
-    if(clientSocket == -1) {
-        std::cerr << "Accept failed.\n";
-        return;
-    }
-
-    std::cout << "Client Connected!\n";
-    std::cout << "Client Socket FD : " << clientSocket << '\n';
-
-    //Receive
-
-    char buffer[4096] = {0};
-
-    ssize_t bytesReceived = recv(
-        clientSocket,
-        buffer,
-        sizeof(buffer) -1,
-        0
-    );
-
-    if (bytesReceived == -1) {
-        std:: cerr << "Receive failed.\n";
-        close(clientSocket);
-        return;
-    }    
-
-    buffer[bytesReceived] = '\0';
-
-    std::cout << "\nHTTP REQUEST\n";
-    
-    HttpParser parser;
-
-    HttpRequest request = parser.parse(buffer);
-
-    // std::cout << "Parsed Request\n";
-
-    // std::cout << "Method : " << request.method<< "\n";
-    // std::cout << "path : " << request.path<< "\n";
-    // std::cout << "version : " << request.version<< "\n";
-    // //Send
-
-    // std::string body = "<html><h1>Hello from C++ server!</h1></html>";
-
-    // std::string response =
-    //     "HTTP/1.1 200 OK\r\n"
-    //     "Content-Type: text/html\r\n"
-    //     "Content-Length: " +
-    //     std::to_string(body.size()) +
-    //     "\r\n\r\n" +
-    //     body;
-
-    Router router;
-
-    StaticFileHandler fileHandler;
-
-    // HttpResponse response = router.route(request);
-
-    // std::string httpResponse = response.toString();
-
-    // send(
-    //     clientSocket,
-    //     httpResponse.c_str(),
-    //     httpResponse.size(),
-    //     0
-    // );
-
-    std::string filePath = router.getFilePath(request);
-
-    std::string body;
-
-    if(filePath.empty()) {
-        body = "<html><h1>404 Not Found</h1></html>";
-    } else {
-        body = fileHandler.readFile(filePath);
-
-        // if(body.empty()) {
-        //     body = "<html><h1>404 File Missing</h1></html>";
-        // }
-    }
-
+void Server::handleClient(Socket& client, const std::string& clientIp) const {
     HttpResponse response;
+    std::string summary = "-";
+    bool headOnly = false;
 
-    response.body = body;
+    try {
+        std::string raw;
+        int readStatus = readRequest(client, raw);
+        if (readStatus < 0) return;
 
-    if(filePath.empty()) {
-        response.statusCode = 404;
-        response.statusMessge = "Not Found";
+        if (readStatus > 0) {
+            response = HttpResponse::error(readStatus);
+        } else {
+            HttpRequest request;
+            int parseError = 0;
+            if (!parser_.parse(raw, request, parseError)) {
+                response = HttpResponse::error(parseError);
+            } else {
+                response = router_.route(request);
+                summary = request.method + " " + request.path;
+                headOnly = (request.method == "HEAD");
+            }
+        }
+    } catch (const std::exception& e) {
+        Logger::error(std::string("request failed: ") + e.what());
+        response = HttpResponse::error(500);
     }
 
-    std::string HttpResponse = response.toString();
-
-    send(
-        clientSocket,
-        HttpResponse.c_str(),
-        HttpResponse.size(),
-        0
-    );
-
-    close(clientSocket);
+    client.sendAll(response.serialize(!headOnly));
+    client.drainAndClose();
+    Logger::info(clientIp + " " + summary + " -> " + std::to_string(response.statusCode));
 }

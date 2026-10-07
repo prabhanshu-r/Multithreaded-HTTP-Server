@@ -7,7 +7,9 @@
 
 class HttpParser {
 public:
-    HttpRequest parse(const std:: string& request);
+    // Parses the request line and headers from `raw`.
+    // On failure returns false and sets `errorStatus` (400, 414, 431, 505...).
+    bool parse(const std::string& raw, HttpRequest& request, int& errorStatus) const;
 };
 
 #endif

@@ -1,27 +1,17 @@
 #include "server/Router.hpp"
-#include "server/StaticFileHandler.hpp"
 
-std::string Router::getFilePath(const HttpRequest& request) {
-    // HttpResponse response;
-    // StaticFileHandler fileHandler;
+HttpResponse Router::route(const HttpRequest& request) const {
+    // This server only reads: GET fetches a page, HEAD fetches just the headers.
+    if (request.method != "GET" && request.method != "HEAD") {
+        HttpResponse response = HttpResponse::error(405);
+        response.headers["Allow"] = "GET, HEAD";
+        return response;
+    }
 
+    // Built-in route: handy for load balancers and uptime monitors.
+    if (request.path == "/health") {
+        return HttpResponse::make(200, "ok\n", "text/plain; charset=utf-8");
+    }
 
-    // if(request.path == "/") {
-    //     response.body = "<html> <h1> Home Page </h1> </html>";
-    // } else if(request.path == "/about") {
-    //     response.body = "<html> <h1> About Page </h1> </html>";
-    // } else if(request.path == "/contact") {
-    //     response.body = "<html> <h1> Contact Page </h1> </html>";
-    // }else {
-    //     response.statusCode = 404;
-    //     response.statusMessge = "Not Found";
-
-    //     response.body = "<html> <h1> 404 Not Found </h1> </html>";
-    // }
-
-    if (request.path == "/") return "public/index.html";
-    if (request.path == "/about") return "public/about.html";
-    if (request.path == "/contact") return "public/contact.html";
-
-    return "";
+    return files_.serve(request.path);
 }

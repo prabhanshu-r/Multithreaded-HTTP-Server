@@ -1,18 +1,20 @@
 cmake_minimum_required(VERSION 3.16)
-
-project(MultithreadedHTTPServer)
+project(MultithreadedHTTPServer LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-include_directories(include)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
-add_executable(
-    MultithreadedHTTPServer
-    src/main.cpp
-    src/Server.cpp
-    src/HttpParser.cpp
-    src/Router.cpp
-    src/HttpResponse.cpp
-    src/StaticFileHandler.cpp
-)
+find_package(Threads REQUIRED)
+
+# Picks up every .cpp in src/, so new files never get forgotten again.
+file(GLOB SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+add_executable(MultithreadedHTTPServer ${SOURCES})
+target_include_directories(MultithreadedHTTPServer PRIVATE include)
+target_link_libraries(MultithreadedHTTPServer PRIVATE Threads::Threads)
+target_compile_options(MultithreadedHTTPServer PRIVATE -Wall -Wextra -Wpedantic)

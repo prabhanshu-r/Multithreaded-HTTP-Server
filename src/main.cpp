@@ -1,14 +1,32 @@
+#include <csignal>
+#include <cstdlib>
+#include <string>
+
+#include "server/Config.hpp"
+#include "server/Logger.hpp"
 #include "server/Server.hpp"
-#include "server/StaticFileHandler.hpp"
-#include <iostream>
 
-int main() {
-    Server server;
-    server.start();
+namespace {
+void onSignal(int) { Server::requestStop(); }
+}  // namespace
 
-    StaticFileHandler fileHandler;
+int main(int argc, char* argv[]) {
+    const std::string configPath = (argc > 1) ? argv[1] : "config/server.conf";
 
-    std::cout << fileHandler.readFile("public/index.html");
+    Config config;
+    if (!config.load(configPath)) {
+        Logger::warn("could not read '" + configPath + "', using defaults");
+    }
+    config.applyEnvironment();
 
-    return 0;
+    // Ctrl+C or `docker stop` -> finish current requests, then exit cleanly.
+    struct sigaction action{};
+    action.sa_handler = onSignal;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGINT, &action, nullptr);
+    sigaction(SIGTERM, &action, nullptr);
+    std::signal(SIGPIPE, SIG_IGN);
+
+    Server server(config);
+    return server.start() ? 0 : 1;
 }
